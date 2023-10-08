@@ -21,6 +21,16 @@ function ksef_creatework() {
   journallognocomment "Założenie bazy danych" "$BEG" "$END" $OK
 }
 
+# Removes to content of the working space
+function ksief_clearwork() {
+  log "Usunięcie danych w $WORKDIRECTORY"
+  local -r BEG=`getdate`
+  rm -rf $BUFORDIR/*
+  rm -rf $FAKTURYDIR/*
+  local -r END=`getdate`
+  journallog "Usunięcie danych" "$BEG" "$END" $OK "Usunięcie danych z $WORKDIRECTORY"
+}
+
 # Accept invoice to the bufor and assigns uuid 
 # $1 < - invoice
 # $2 > - temporary file containing the generated uuid
@@ -35,7 +45,8 @@ function ksef_acceptinvoice() {
   if ! xmllint $INVOICE --schema $KSEFPROCDIR/xsd/schemat.xsd --noout 1>>$LOGFILE 2>&1 ; then
     local -r END=`getdate`
     journallog "$OP" "$BEG" "$END" $BLAD "Faktura niezgodna ze schematem xsd"
-    logfail "Błąd podczas sprawdzanie zgodności faktury"
+    log "Błąd podczas sprawdzanie zgodności faktury"
+    return 2
   fi
   if ! cp $1 $BUFORDIR/$UUID.xml 2>>$LOGFILE; then 
     local -r END=`getdate`

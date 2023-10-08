@@ -1,7 +1,10 @@
-source ./env.rc
+#!/bin/bash
+DIR=`dirname $0`
+RDIR=`realpath $DIR`
+source $RDIR/env.rc
 source $KSEFPROCDIR/proc/commonproc.sh
 source $KSEFPROCDIR/proc/ksefproc.sh
-source proc/ksefloader.sh
+source $RDIR/proc/ksefloader.sh
 
 INIT_SESSION=0
 SESSIONTOKEN=`crtemp`
@@ -13,8 +16,8 @@ NO=0
 function trap_exit() {
     if [ "$INIT_SESSION" -eq 1 ]; then
         requestsessionterminate $SESSIONTOKEN
-        END=`getdate`
-        journallog "$OP" "$BEG" "$END" $ERROR "Przeniesiono $NO faktur. Wystąpił błąd podczas przenoszenia"
+        ENDD=`getdate`
+        journallog "$OP" "$BEG" "$ENDD" $ERROR "Przeniesiono $NO faktur. Wystąpił błąd podczas przenoszenia"
         removetemp
         log "Wystąpił błąd podczas przenoszenia faktur z bufora"
         return 1

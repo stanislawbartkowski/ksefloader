@@ -6,7 +6,4 @@ source $KSEFPROCDIR/proc/commonproc.sh
 source $KSEFPROCDIR/proc/ksefproc.sh
 source $RDIR/proc/ksefloader.sh
 
-ksef_creatework
-
-
-
+ksief_clearwork
