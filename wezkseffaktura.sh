@@ -18,7 +18,7 @@ help() {
     logfail "Nie mozna wywołać. Powinny być dwa parametry"
 }
 
-[ "$1" == "" ] && [ "$2" == "" ] && help
+[ "$1" == "" ] || [ "$2" == "" ] && help
 
 ksieg_getinvoicestatus $1 $2
 

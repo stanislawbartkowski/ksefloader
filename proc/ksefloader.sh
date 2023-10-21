@@ -9,6 +9,14 @@ FAKTURYDIR=$WORKDIRECTORY/faktury
 OK="OK"
 BLAD="ERROR"
 
+function getnipdir() {
+  echo $BUFORDIR/$1
+}
+
+function getnipfakturydir() {
+  echo $FAKTURYDIR/$1
+}
+
 # Creates working space
 # Does not impact existing installation
 function ksef_creatework() {
@@ -23,73 +31,84 @@ function ksef_creatework() {
 
 # Removes to content of the working space
 function ksief_clearwork() {
+  local -r NIP=$1
   log "Usunięcie danych w $WORKDIRECTORY"
   local -r BEG=`getdate`
-  rm -rf $BUFORDIR/*
-  rm -rf $FAKTURYDIR/*
+  rm -rf $BUFORDIR/$NIP/*
+  rm -rf $FAKTURYDIR/$NIP/*
   local -r END=`getdate`
-  journallog "Usunięcie danych" "$BEG" "$END" $OK "Usunięcie danych z $WORKDIRECTORY"
+  journallog "Usunięcie danych" "$BEG" "$END" $OK "Usunięcie danych z $WORKDIRECTORY dla $NIP"
 }
 
 # Accept invoice to the bufor and assigns uuid 
-# $1 < - invoice
-# $2 > - temporary file containing the generated uuid
+# $1 < - nip
+# $2 < - invoice
+# $3 > - temporary file containing the generated uuid
 # Returns
 function ksef_acceptinvoice() {
-  local -r INVOICE=$1
+  local -r NIP=$1
+  local -r INVOICE=$2
+  local -r OUTTEMP=$3
   local -r BEG=`getdate`
   local -r UUID=`uuidgen`
-  local -r MESS="Kopiowanie faktury z $1 do $BUFORDIR/$UUID.xml"
+  local -r NDIR=`getnipdir $NIP`
+  local -r MESS="Kopiowanie faktury z $INVOICE do $NDIR/$UUID.xml"
   local -r OP="Nowa faktura do bufora"
   log "$MESS"
+  mkdir -p $NDIR
   if ! xmllint $INVOICE --schema $KSEFPROCDIR/xsd/schemat.xsd --noout 1>>$LOGFILE 2>&1 ; then
     local -r END=`getdate`
     journallog "$OP" "$BEG" "$END" $BLAD "Faktura niezgodna ze schematem xsd"
     log "Błąd podczas sprawdzanie zgodności faktury"
     return 2
   fi
-  if ! cp $1 $BUFORDIR/$UUID.xml 2>>$LOGFILE; then 
+  if ! cp $INVOICE $NDIR/$UUID.xml 2>>$LOGFILE; then 
     local -r END=`getdate`
     journallog "$OP" "$BEG" "$END" $BLAD "Błąd podczas kopiowanie"
     logfail "Błąd podczas kopiowania"
   fi
 
-  echo $UUID >$2
+  echo $UUID >$OUTTEMP
   local -r END=`getdate`
   journallog "$OP" "$BEG" "$END" $OK "UUID: $UUID"
 }
 
 function ksef_initsession() {
+  local -r NIP=$1
   local -r TEMP=`crtemp`
   local -r INITTOKEN=`crtemp`
   requestchallenge $TEMP
-  createinitxmlfromchallenge $TEMP >$INITTOKEN
+  createinitxmlfromchallenge $NIP $TEMP >$INITTOKEN
   requestinittoken $INITTOKEN $SESSIONTOKEN
   INIT_SESSION=1
 }
 
 
-# Move invoice from invoice to faktury and KSeF
+# Move invoice from bufor to faktury and KSeF
 function ksef_faktury_bufor() {
-  log "Sprawdzanie $BUFORDIR"
-  if ! ls $BUFORDIR/*.xml >>$LOGFILE 2>&1; then
+  local -r NIP=$1
+  local -r NDIR=`getnipdir $NIP`
+  local -r FDIR=`getnipfakturydir $NIP`
+  log "Sprawdzanie $NDIR"
+  if ! ls $BUFORDIR/**/*.xml >>$LOGFILE 2>&1; then
      local -r END=`getdate`
-     log "Nie znaleziono zadnych nowych faktur"
+     log "Nie znaleziono zadnych nowych faktur w $NDIR"
      journallog "$OP" "$BEG" "$END" $OK "Nie znaleziono żadnych nowych faktur w buforze"
      return 0
   fi
-  ksef_initsession
+  ksef_initsession $NIP
   local -r REFERENCESTATUS=`crtemp`
-  for f in $BUFORDIR/*.xml; do
+  for f in $NDIR/*.xml; do
     requestinvoicesendandreference $SESSIONTOKEN $f $REFERENCESTATUS
     local FNAME=$(basename -s .xml $f)
-    mv $f $FAKTURYDIR/
-    cp $REFERENCESTATUS $FAKTURYDIR/$FNAME.json
+    mkdir -p $FDIR
+    mv $f $FDIR/
+    cp $REFERENCESTATUS $FDIR/$FNAME.json
     NO=$((NO+1))
   done
   local -r END=`getdate`
   journallog "$OP" "$BEG" "$END" $OK "Przeniesiono do KSeF $NO faktur"
-  log "Przeniesiono $NO faktur znalezionych w $BUFORDIR"
+  log "Przeniesiono $NO faktur znalezionych w $NDIR"
   requestsessionterminate $SESSIONTOKEN
   INIT_SESSION=0
 }
@@ -110,21 +129,21 @@ function ksieg_getinvoicestatus() {
   local -r BEG=`getdate`
   log "Sprawdzenie statusu faktury $REFERENCE"
 
+  local -r BUFFERFILE=`ls $BUFORDIR/**/$REFERENCE.xml 2>/dev/null`
+  local -r FAKTURYFILE=`ls $FAKTURYDIR/**/$REFERENCE.xml 2>/dev/null`
+
   # check buffer
-  local -r BUFFERFILE=$BUFORDIR/$REFERENCE.xml
-   if [ -f $BUFFERFILE ]; then
+   if [ -n "$BUFFERFILE" ]; then
      local -r END=`getdate`
      log "Faktura w buforze"
      journallog "$OP" "$BEG" "$END" $OK "Faktura $REFERENCE w buforze"
      return 2
   fi
-  local -r FAKTURYFILE=$FAKTURYDIR/$REFERENCE.xml
-  local -r FAKTURYJSON=$FAKTURYDIR/$REFERENCE.json
-  # musi byc w FAKTURYDIR
-  existfile $FAKTURYFILE
+  [ -z "$FAKTURYFILE" ] && logfail "$REFERENCE - nie ma takiego faktury ani w buforze ani w katalogu z fakturami"
+  local FAKTURYJSON=`ls $FAKTURYDIR/**/$REFERENCE.json 2>/dev/null` 
   # jeśli nie ma JSON to pczekaj 5 sekund, moze jest w trakcie czekania na status
-  [ ! -f $FAKTURYJSON ] && sleep 5
-  existfile $FAKTURYJSON
+  [  -z "$FAKTURYJSON" ] && sleep 5
+  local FAKTURYJSON=`ls $FAKTURYDIR/**/$REFERENCE.json 2>/dev/null` 
   if ! cp $FAKTURYJSON $RES; then 
      local -r END=`getdate`
      local -r MESS="Błąd podczas kopiowania $FAKTURYJSON"

@@ -12,7 +12,6 @@ OP="Sprawdzanie bufora z fakturami"
 BEG=`getdate`
 NO=0
 
-
 function trap_exit() {
     if [ "$INIT_SESSION" -eq 1 ]; then
         requestsessionterminate $SESSIONTOKEN
@@ -27,4 +26,8 @@ function trap_exit() {
 
 trap "trap_exit" EXIT
 
-ksef_faktury_bufor
+for n in `yq -r ".tokens | keys[]" /home/perseus/perseus/PerseusWM/startwm/config/kseftokens.yaml`; do
+  NIP=`echo $n | cut -c 4- `
+  echo $NIP
+  ksef_faktury_bufor $NIP
+done
