@@ -77,7 +77,9 @@ function ksef_initsession() {
   local -r NIP=$1
   local -r TEMP=`crtemp`
   local -r INITTOKEN=`crtemp`
-  requestchallenge $TEMP
+  logile
+  requestchallenge $NIP $TEMP
+  logfile $TEMP
   createinitxmlfromchallenge $NIP $TEMP >$INITTOKEN
   requestinittoken $INITTOKEN $SESSIONTOKEN
   INIT_SESSION=1
@@ -103,7 +105,9 @@ function ksef_faktury_bufor() {
     local FNAME=$(basename -s .xml $f)
     mkdir -p $FDIR
     mv $f $FDIR/
+    [ $? -eq 0 ] || logfail "Failed while moving $f $FDIR"
     cp $REFERENCESTATUS $FDIR/$FNAME.json
+    [ $? -eq 0 ] || logfail "Failed while copying $REFERENCESTATUS $FDIR/$FNAME.json"
     NO=$((NO+1))
   done
   local -r END=`getdate`

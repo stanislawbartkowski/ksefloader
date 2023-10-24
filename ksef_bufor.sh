@@ -28,6 +28,5 @@ trap "trap_exit" EXIT
 
 for n in `yq -r ".tokens | keys[]" $TOKENSTORE`; do
   NIP=`echo $n | cut -c 4- `
-  echo $NIP
   ksef_faktury_bufor $NIP
 done
