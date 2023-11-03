@@ -143,7 +143,7 @@ function ksieg_getinvoicestatus() {
      journallog "$OP" "$BEG" "$END" $OK "Faktura $REFERENCE w buforze"
      return 2
   fi
-  [ -z "$FAKTURYFILE" ] && logfail "$REFERENCE - nie ma takiego faktury ani w buforze ani w katalogu z fakturami"
+  [ -z "$FAKTURYFILE" ] && logfail "$REFERENCE - nie ma takiej faktury ani w buforze ani w katalogu z fakturami"
   local FAKTURYJSON=`ls $FAKTURYDIR/**/$REFERENCE.json 2>/dev/null` 
   # jeśli nie ma JSON to pczekaj 5 sekund, moze jest w trakcie czekania na status
   [  -z "$FAKTURYJSON" ] && sleep 5
