@@ -2,6 +2,7 @@
 # Solution based on ksef
 # -------------------------
 # Date: 2023/09/28
+# Date: 2023/11/26 - Usunięcie faktury z bufora
 
 BUFORDIR=$WORKDIRECTORY/bufor
 FAKTURYDIR=$WORKDIRECTORY/faktury
@@ -30,7 +31,7 @@ function ksef_creatework() {
 }
 
 # Removes to content of the working space
-function ksief_clearwork() {
+function ksef_clearwork() {
   local -r NIP=$1
   log "Usunięcie danych w $WORKDIRECTORY"
   local -r BEG=`getdate`
@@ -76,8 +77,7 @@ function ksef_acceptinvoice() {
 function ksef_initsession() {
   local -r NIP=$1
   local -r TEMP=`crtemp`
-  local -r INITTOKEN=`crtemp`
-  logile
+  local -r INITTOKEN=`crtemp`  
   requestchallenge $NIP $TEMP
   logfile $TEMP
   createinitxmlfromchallenge $NIP $TEMP >$INITTOKEN
@@ -126,10 +126,10 @@ function ksef_faktury_bufor() {
 # 2 - Invoice still in the buffer
 # 3 - Invoice rejected
 
-function ksieg_getinvoicestatus() {
+function ksef_getinvoicestatus() {
   local -r REFERENCE=$1
   local -r RES=$2
-  local -r OP="Invoice status"
+  local -r OP="Status faktury"
   local -r BEG=`getdate`
   log "Sprawdzenie statusu faktury $REFERENCE"
 
@@ -158,4 +158,42 @@ function ksieg_getinvoicestatus() {
   log "Faktura jest wprowadzona do KSeF i status został przesłany"
   journallog "$OP" "$BEG" "$END" $OK "Status $REFERENCE faktury przesłany"
   return 0
+}
+
+# Remove invoice from buffer before sending to KSeF
+# $1 < internal uuid
+# Exit code:
+# 0 - OK, uuid invoice removed frm buffer
+# 1 - Failure, uuid is already sent to KSeF
+# 2 - uuid invoice does not exist 
+# 3 - other failure
+function ksef_removeinvoice() {
+  local -r REFERENCE=$1
+  local -r RES=$2
+  local -r OP="Usunięcie faktury"
+  local -r BEG=`getdate`
+  log "Usunięcie faktury $REFERENCE"
+
+  local -r BUFFERFILE=`ls $BUFORDIR/**/$REFERENCE.xml 2>/dev/null`
+  local -r FAKTURYFILE=`ls $FAKTURYDIR/**/$REFERENCE.xml 2>/dev/null`
+  if [ -n "$BUFFERFILE" ]; then
+     local -r END=`getdate`
+     log "Faktura jest jeszcze w buforze i możliwa do usunięcia"
+     log "Usunięcie $BUFFERFILE"
+     rm $BUFFERFILE
+     journallog "$OP" "$BEG" "$END" $OK "Faktura $REFERENCE została usunięta"
+     return 0
+  fi
+  if [ -n "$FAKTURYFILE" ]; then
+     local -r END=`getdate`
+     local -r MESS="Faktura $FAKTURYFILE została przesłana do KSeF i nie moze być usunięta"
+     log "$MESS"
+     journallog "$OP" "$BEG" "$END" $ERROR "$MESS"
+     return 1
+  fi
+  local -r END=`getdate`
+  local -r MESS="Faktura $REFERENCE nie wystęje ani w buforze ani w wysłanych"
+  log "$MESS"
+  journallog "$OP" "$BEG" "$END" $ERROR "$MESS"
+  return 2
 }

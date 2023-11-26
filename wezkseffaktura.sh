@@ -20,5 +20,5 @@ help() {
 
 [ "$1" == "" ] || [ "$2" == "" ] && help
 
-ksieg_getinvoicestatus $1 $2
+ksef_getinvoicestatus $1 $2
 
