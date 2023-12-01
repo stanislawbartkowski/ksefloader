@@ -197,3 +197,38 @@ function ksef_removeinvoice() {
   journallog "$OP" "$BEG" "$END" $ERROR "$MESS"
   return 2
 }
+
+# Read invoices using paging
+# $1 < NIP
+# $2 < DATE_FROM
+# $3 < DATE_TO
+# $4 > RESULT
+function ksef_readinvoices() {
+  local -r page_size=10
+  local -r NIP=$1
+  local -r DATE_FROM=$2
+  local -r DATE_TO=$3
+  local -r RES=$4
+  local -r TEMP=`crtemp`
+  local -r page_size=10
+  
+  ksef_initsession $NIP
+  requestsessionstatus $SESSIONTOKEN $TEMP
+
+  echo '{ "res" : [] }' >$RES
+  local page_offset=0
+  while true; do
+    log "Odczytaj od $page_offset $page_size faktur"
+    requestinvoicesync $SESSIONTOKEN $DATE_FROM $DATE_TO $page_offset $page_size $TEMP
+    R=`jq -r '.invoiceHeaderList' $TEMP`
+    if [ "$R" == "[]" ]; then break; fi
+    jq -n --slurpfile doc1  $RES --slurpfile doc2 $TEMP  '{ res: ($doc1[0].res + $doc2[0].invoiceHeaderList) }' >$RES
+    (( page_offset+=$page_size))
+  done
+  local -r END=`getdate`
+  local -r MESS="Faktury zostały odczytane"
+  log "$MESS"
+  journallog "$OP" "$BEG" "$END" $ERROR "$MESS"
+  requestsessionterminate $SESSIONTOKEN
+  INIT_SESSION=0
+}

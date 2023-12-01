@@ -1,19 +1,11 @@
-source ./env.rc
-source $KSEFPROCDIR/proc/commonproc.sh
-source $KSEFPROCDIR/proc/ksefproc.sh
-source proc/ksefloader.sh
-
+NIP=5328617307
 I="../ksef/example/faktura.xml"
-#I="../ksef/example/Faktura_KSeF.xml"
+TEMP=/tmp/uuid.txt
 
-#TEMP=`crtemp`
-#ksef_acceptinvoice $I $TEMP
-#cat $TEMP
-#trap "echo 'trap' " EXIT
+RES=/tmp/res.json
+#./acceptinvoice.sh $NIP $I $TEMP
+./read_invoice.sh $NIP "2023-10-01" "2023-10-21" $RES
 
-ksief_bufor
-
-echo "aaa"
 
 
 
