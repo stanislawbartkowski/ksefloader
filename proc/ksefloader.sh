@@ -81,7 +81,7 @@ function ksef_initsession() {
   requestchallenge $NIP $TEMP
   logfile $TEMP
   createinitxmlfromchallenge $NIP $TEMP >$INITTOKEN
-  requestinittoken $INITTOKEN $SESSIONTOKEN
+  requestinittoken $INITTOKEN $SESSIONSTATUS
   INIT_SESSION=1
 }
 
@@ -101,7 +101,7 @@ function ksef_faktury_bufor() {
   ksef_initsession $NIP
   local -r REFERENCESTATUS=`crtemp`
   for f in $NDIR/*.xml; do
-    requestinvoicesendandreference $SESSIONTOKEN $f $REFERENCESTATUS
+    requestinvoicesendandreference $SESSIONSTATUS $f $REFERENCESTATUS
     local FNAME=$(basename -s .xml $f)
     mkdir -p $FDIR
     mv $f $FDIR/
@@ -113,7 +113,7 @@ function ksef_faktury_bufor() {
   local -r END=`getdate`
   journallog "$OP" "$BEG" "$END" $OK "Przeniesiono do KSeF $NO faktur"
   log "Przeniesiono $NO faktur znalezionych w $NDIR"
-  requestsessionterminate $SESSIONTOKEN
+  requestsessionterminate $SESSIONSTATUS
   INIT_SESSION=0
 }
 
@@ -213,13 +213,13 @@ function ksef_readinvoices() {
   local -r page_size=10
   
   ksef_initsession $NIP
-  requestsessionstatus $SESSIONTOKEN $TEMP
+  requestsessionstatus $SESSIONSTATUS $TEMP
 
   echo '{ "res" : [] }' >$RES
   local page_offset=0
   while true; do
     log "Odczytaj od $page_offset $page_size faktur"
-    requestinvoicesync $SESSIONTOKEN $DATE_FROM $DATE_TO $page_offset $page_size $TEMP
+    requestinvoicesync $SESSIONSTATUS $DATE_FROM $DATE_TO $page_offset $page_size $TEMP
     R=`jq -r '.invoiceHeaderList' $TEMP`
     if [ "$R" == "[]" ]; then break; fi
     jq -n --slurpfile doc1  $RES --slurpfile doc2 $TEMP  '{ res: ($doc1[0].res + $doc2[0].invoiceHeaderList) }' >$RES
@@ -229,6 +229,6 @@ function ksef_readinvoices() {
   local -r MESS="Faktury zostały odczytane"
   log "$MESS"
   journallog "$OP" "$BEG" "$END" $ERROR "$MESS"
-  requestsessionterminate $SESSIONTOKEN
+  requestsessionterminate $SESSIONSTATUS
   INIT_SESSION=0
 }

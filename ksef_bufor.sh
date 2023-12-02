@@ -7,14 +7,14 @@ source $KSEFPROCDIR/proc/ksefproc.sh
 source $RDIR/proc/ksefloader.sh
 
 INIT_SESSION=0
-SESSIONTOKEN=`crtemp`
+SESSIONSTATUS=`crtemp`
 OP="Sprawdzanie bufora z fakturami"
 BEG=`getdate`
 NO=0
 
 function trap_exit() {
     if [ "$INIT_SESSION" -eq 1 ]; then
-        requestsessionterminate $SESSIONTOKEN
+        requestsessionterminate $SESSIONSTATUS
         ENDD=`getdate`
         journallog "$OP" "$BEG" "$ENDD" $ERROR "Przeniesiono $NO faktur. Wystąpił błąd podczas przenoszenia"
         removetemp
