@@ -7,13 +7,8 @@ source $KSEFPROCDIR/proc/ksefproc.sh
 source $RDIR/proc/ksefloader.sh
 
 function help() {
-    echo "Wyczyszczenie bufora dla użytkownika NIP"
-    echo "Wywołanie:"
-    echo "   usundane.sh <nip> "
-    logfail "Nie mozna wywołać. Powinien być dokładnie jeden parametr"
+    echo "Wyczyszczenie katalogu z danymi"
+    echo "   usundane.sh"
 }
 
-
-[ "$1" == "" ]  && help
-
-ksef_clearwork $1
+ksef_clearwork

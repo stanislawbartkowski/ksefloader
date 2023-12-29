@@ -7,13 +7,12 @@ source $KSEFPROCDIR/proc/ksefproc.sh
 source $RDIR/proc/ksefloader.sh
 
 function help() {
-    echo "Usunięcie faktury z bufora"
+    echo "Wez UPO do sesji"
     echo "Wywołanie:"
-    echo "   usunzbufora.sh <uuid> "
-    logfail "Nie mozna wywołać. Powinien być dokładnie jeden parametr"
+    echo "   read_invoice.sh <REFERENCE> <PLIK_RES>"
+    logfail "Nie można wywołać."
 }
 
+[ "$1" == "" ] || [ "$2" == "" ] && help
 
-[ "$1" == "" ]  && help
-
-ksef_removeinvoice $1
+ksef_getupo "$1" $2
